@@ -1,33 +1,16 @@
 #!/bin/bash
 #本脚本在debian5-debian9测试没有问题
-if ! [ -x /opt/gcc-3.4.6-2f ]  ; then
-wget http://mirrors.ustc.edu.cn/loongson/loongson1b/Tools/toolchain/gcc-3.4.6-2f.tar.gz -c
-tar zxvf gcc-3.4.6-2f.tar.gz
-mkdir -p /opt
-mv gcc-3.4.6-2f /opt
+if ! [ -x /usr/local/comp ]  ; then
+wget http://mirrors.ustc.edu.cn/loongson/pmon/toolchain-pmon.tar.bz2 -c
+tar jxvf toolchain-pmon.tar.bz2
+mv usr/local/comp /usr/local/comp
+rm -rf usr  
 fi
-
-PATH=/opt/gcc-3.4.6-2f/bin:`pwd`/tools/pmoncfg:$PATH
-
-if ! [ "`which pmoncfg`" ] ; then
-cd tools/pmoncfg
-make
-cd ../..
-fi
-
-if ! [ "`which bison`" ] ;then
- apt-get install bison
-fi
-
-if ! [ "`which flex`" ] ;then
- apt-get install flex
-fi
-
-make all tgt=rom
-
+PATH=/usr/local/comp/mips-elf/gcc-2.95.3/bin:$PATH
+make config
 cd zloader.2ftopstar
-make cfg all tgt=rom CROSS_COMPILE=mipsel-linux- LANG=C
-cp gzrom.bin ../pmon_2ftopstar_m5040.bin
-make cfg all tgt=ram CROSS_COMPILE=mipsel-linux- LANG=C
-cp gzram ../gzram.m5040
-zloader.2ftopstar
+make cfg
+make all tgt=ram
+cp gzram ../gzram.2ftopstar
+make all tgt=rom
+cp gzrom.bin ../pmon_2ftopstar.bin
