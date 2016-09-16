@@ -1,0 +1,7 @@
+*.o
+gzrom*
+initmips.c
+pmon.bin*
+tags
+zloader/ld.script
+Targets/Bonito*/compile/*
