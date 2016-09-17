@@ -1,4 +1,4 @@
-#!/bin/sh -
+#!/bin/bash -
 #
 # Copyright (c) 2001, 2002
 #	Interactive People Unplugged AB.  All rights reserved.
@@ -38,19 +38,34 @@ then
 fi
 
 touch version
-v=`cat version` u=${USER-root} d=`pwd` h=`hostname` t=`date`
+v=`cat version` u=${USER-root} d=`pwd` h=`hostname` t=`date +%Y-%m-%d\ %H:%M:%S\ %z`
 id=`basename ${d}`
-git=`git log -1|head -n 3|perl -e 'local $/;$a=<>;$a=~s/\n/ /g;print $a;'`
+#git=`git log -1|head -n 3|perl -e 'local $/;$a=<>;$a=~s/\n/ /g;print $a;'`
 ost="PMON2000"
 osr="2.1"
-
+gitUrl="GitUrl:"`git remote get-url --push  origin`
+gitLog=`git log -1`
+hashNumber=`echo $gitLog | cut -d ' ' -f 2`
+hashNumber="GitHashNumber: "$hashNumber
+Author=`git log -1|grep ^Auth`
+Author="Commit"$Author
+commitDate=`git log -1 |grep ^Date`
+commitDate="Commit"$commitDate
+usrName="UsrName: "`whoami`
+makeTime="MakeTime: `date +%Y-%m-%d\ %H:%M:%S\ %z`"
+user_ip=`ifconfig |grep "inet addr"|grep -v "inet addr:127" |tr ":\r\n" "   "|awk '{print $3}'|tr -d ' '`
+if ! [ "$user_ip" ] ;then
+#debian9
+user_ip=`ifconfig |grep "inet "|grep -v "inet 127" |awk '{print $2}'|tr -d ' '`
+fi
+user_ip="userIP: $user_ip"
 cat >vers.c <<eof
 char ostype[] = "${ost}";
 char osrelease[] = "${osr}";
 char osversion[] = "${id}#${v}";
 char sccs[8] = { ' ', ' ', ' ', ' ', '@', '(', '#', ')' };
 char vers[] =
-    "${ost} ${osr} (${id}) #${v}: ${t} ${git}";
+    "${hashNumber}\\n${gitUrl}\\n${Author}\\n${commitDate}\\n${user_ip}\\n${usrName}\\n${makeTime}";
 eof
 
 cat >vers.h <<eof

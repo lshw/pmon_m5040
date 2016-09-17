@@ -2,6 +2,5 @@ TARGET=Bonito2ftopstar
 TARGETEL=Bonito
 export START=start.o
 MEMSIZE=128
-ZLOADER_OPTIONS=-mips3
-
+ZLOADER_OPTIONS=-mips3 -D NOCACHE2 -O0
 include Makefile.inc

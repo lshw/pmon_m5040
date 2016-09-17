@@ -536,10 +536,6 @@ main()
 			int t_cd = 0;
 			int t_disk = 0;
 
-			if (getenv("bootdelay")) {
-				unsetenv("bootdelay");
-				setenv("bootdelay", "1");
-			}
 
 #ifdef DEV2FTOPSTAR_YUN
 			yun_init = getenv ("yun_init");
