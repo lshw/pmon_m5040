@@ -9,7 +9,7 @@ config          pmon
 makeoptions	ENDIAN=EL		# Little endian version.
 
 
-#include "conf/GENERIC_ALL"
+include "conf/GENERIC_ALL"
 
 #
 # System Name and Target Name
@@ -21,32 +21,33 @@ option		TARGETNAME="\"Bonito\""
 # Platform options
 #
 option		BONITOEL
-option      DEVBD2E
 option		MIPS
 option		INET
 option		DEV2FTOPSTAR
 option		DEV2FTOPSTAR_YUN
 
-#select		mod_flash_amd		# AMD flash device programming
+select		mod_flash_amd		# AMD flash device programming
 #select		mod_flash_intel		# intel flash device programming
 select		mod_flash_sst		# intel flash device programming
+select		mod_flash_winbond       # winbond flash device programming
 select		mod_debugger		# Debugging module
 select		mod_symbols		# Symbol table handling
 select		mod_s3load		# Srecord loading
-#select		mod_fastload		# LSI Fastload
+select		mod_fastload		# LSI Fastload
 select		mod_elfload		# ELF loading
 
 #
 # Command selection. Selects pmon commands
 #
-#select		cmd_newmt
-#select		cmd_test
-select		cmd_main
-#select		cmd_setup
-#select		mod_display
-#select		cmd_about		# Display info about PMON
-#select		cmd_boot		# Boot wrapper
+select		cmd_about		# Display info about PMON
+select		cmd_gui
+select		cmd_boot		# Boot wrapper
 select		cmd_mycmd
+#select		cmd_newmt
+select		cmd_setup
+#select		cmd_test
+#select		cmd_main
+#select		mod_display
 select		cmd_cache		# Cache enabling
 #select		cmd_call		# Call a function command
 select		cmd_date		# Time of day command
@@ -78,37 +79,40 @@ select		mod_uart_ns16550	# Standard UART driver
 #option		CONS_BAUD=B9600
 option		CONS_BAUD=B115200
 select		ext2
-select		fatfs
+select		fat
 #select		mod_x86emu		# X86 emulation for VGA
 option		MY40IO
 #select		mod_x86emu_int10
-select 		mod_framebuffer
+select		mod_framebuffer
 select		mod_smi502		# Silicon Motion502
 option		SMI502
 #option		X640x480
 #option		X1024x600
-#option		X800x600
-option		X1024x768
+option		X800x600
+#option		X1024x768
 #option		X1280x800
 #option 	CONFIG_VIDEO_8BPP
 option 		CONFIG_VIDEO_16BPP
 #option 	CONFIG_VIDEO_32BPP
 select		mod_vgacon
 option		NOPCINAMES		# Save some space for x86emu
-option		FASTBOOT
-select	    vt82c686        #via686a/b code
+#select		vt82c686        #via686a/b code
 
+ 
 #
 # Functional options.
 #
 option		NOSNOOP			# Caches are no-snooping
+
+#behavior
+option CLEAR_WHEN_BOOT
+option ALL_OTHER_KEY_TO_STOP_BOOT
 
 #
 # HAVE options. What tgt level provide
 #
 option		HAVE_TOD		# Time-Of-Day clock
 option		HAVE_NVENV		#  Platform has non-volatile env mem
-option		HAVE_LOGO		# Output splash logo
 #option		USE_SUPERIO_UART
 #option		USE_LEGACY_RTC
 #option		GODSONEV2A
@@ -120,14 +124,13 @@ option		AUTOLOAD
 #option		CONFIG_PCI0_LARGE_MEM	
 #option		CONFIG_PCI0_HUGE_MEM	
 #option		CONFIG_PCI0_GAINT_MEM	
-option		CONFIG_CACHE_64K_4WAY
 option 	    NVRAM_IN_FLASH	
 #option		WDDBUG
 
 #
 #  Now the Machine specification
 #
-mainbus0    at root
+mainbus0	at root
 localbus0	at mainbus0
 #fd0         at mainbus0
 pcibr0		at mainbus0
@@ -137,7 +140,7 @@ pci*		at pcibr?
 #pci*		at ppb? bus ?
 
 #### USB
-uhci*		at pci? dev ? function ?
+#uhci*		at pci? dev ? function ?
 #option CONFIG_SM502_USB_HCD
 
 #### SCSI support
@@ -151,17 +154,18 @@ uhci*		at pci? dev ? function ?
 #gt1		at localbus? base 5
 #gt2		at localbus? base 6
 # fxp normally only used for debugging (enable/disable both)
-fxp0            at pci? dev ? function ?        # Intel 82559 Device
-#inphy*          at mii? phy ?                   # Intel 82555 PHYs
-rtl*        at pci? dev ? function ?
-rtk*        at pci? dev ? function ?
+
+#fxp0           at pci? dev ? function ?        # Intel 82559 Device
+#inphy*         at mii? phy ?                   # Intel 82555 PHYs
+rtl*		at pci? dev ? function ?	# 8139
+#rtk*		at pci? dev ? function ?
 ohci*		at pci? dev ? function ?
 usb*		at usbbus ? 
 #ohci1		at pci? dev ? function ?
 
 select		mod_usb
 select		mod_usb_storage
-select		mod_usb_uhci
+#select		mod_usb_uhci
 select		mod_usb_ohci
 select		mod_usb_kbd
 
@@ -171,7 +175,7 @@ pciide* 	at pci ? dev ? function ? flags 0x0000
 ######### SATA Controller Drives ###########
 atp*        at pci? dev ? function ?  #sata atp8620
 sata*		at atp?
-wd*			at atp? channel ? drive ? flags 0x0001
+#wd*			at atp? channel ? drive ? flags 0x0001
 #### IDE hard drives
 #wd*		at pciide? channel ? drive ? flags 0x0000
 
@@ -181,16 +185,15 @@ option NAND		#Only SLC supportted
 #### Pseudo devices
 pseudo-device	loop	1	# network loopback
 
-ide_cd* 	at pciide? channel ? drive ? flags 0x0001
-select 		iso9660
-option IDECD 
+#ide_cd* 	at pciide? channel ? drive ? flags 0x0001
+#select 		iso9660
+#option IDECD 
 #option HAVE_NB_SERIAL
 #option USE_ENVMAC
 #option LOOKLIKE_PC
 #select cmd_lwdhcp
 #select cmd_bootp
 option FOR_GXEMUL
-select fatfs
 option FLOATINGPT
 option PCI_IDSEL_VIA686B=0
 option COM3_BASE_ADDR=0xbe000000
