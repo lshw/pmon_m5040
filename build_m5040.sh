@@ -7,10 +7,12 @@ mv usr/local/comp /usr/local/comp
 rm -rf usr  
 fi
 PATH=/usr/local/comp/mips-elf/gcc-2.95.3/bin:$PATH
+make pmontools
 make config
-cd zloader.2ftopstar
-make cfg
-make all tgt=ram
-cp gzram ../gzram.2ftopstar
-make all tgt=rom
-cp gzrom.bin ../pmon_2ftopstar.bin
+make buildram
+cp zloader/gzram .
+#scp gzram 192.168.12.7:/srv/tftp
+make build
+cp zloader/gzrom.bin .
+#scp gzrom.bin 192.168.12.7:/srv/tftp
+
