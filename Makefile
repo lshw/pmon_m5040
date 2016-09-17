@@ -62,3 +62,7 @@ config:
 build:
 	ln -sf zloader zloader.${target}
 	cd zloader.${target} && make tgt=rom
+
+buildram:
+	ln -sf zloader zloader.${target}
+	cd zloader.${target} && make tgt=ram
