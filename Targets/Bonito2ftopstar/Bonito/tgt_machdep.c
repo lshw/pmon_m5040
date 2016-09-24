@@ -259,28 +259,6 @@ asm(\
 	printf("BEV in SR set to zero.\n");
 
 
-	{
-		char copyright[11] ="REV_";
-		char *tmp_copy = NULL;
-		int ic;
-
-		tmp_copy = strstr(vers, "commit");
-		tmp_copy  = tmp_copy  + 7;
-		for(ic=4; ic<10; ic++) {
-			if((*tmp_copy >= 'a') && (*tmp_copy <= 'z'))
-				copyright[ic] = (*tmp_copy) - 32;
-			else
-				copyright[ic] = (*tmp_copy);
-					tmp_copy++;
-		}
-
-		copyright[10] = '\0';
-		if(getenv("bios_ver") == NULL || strcmp(getenv("bios_ver"), &copyright[4]) != 0)
-		{
-			setenv("bios_ver", &copyright[4]);
-		}
-	}
-
 	/*
 	 * Launch!
 	 */
