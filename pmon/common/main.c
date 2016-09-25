@@ -58,7 +58,7 @@
 
 #include "mod_debugger.h"
 #include "mod_symbols.h"
-
+#include <sys/device.h>
 #include "sd.h"
 #include "wd.h"
 #include "../../pmon/cmds/cmd_main/window.h"
@@ -162,20 +162,21 @@ int check_config (const char * file);
 static int load_menu_list()
 {
 	char* rootdev = NULL;
-	char* rootdev1 = NULL;
 	char* p = NULL;
 	char* path = NULL;
 	int i, wait = 0, err = 0;
 	char *errp, *methodp;
-	char err1[] = "ERROR: Device type is incorrect!";	 //error num -1
 	char err2[] = "ERROR: Can't found configure file!";//-2
 	char err3[] = "ERROR: Can't read configure file!";  //-3
-	char err4[] = "WARN: The device is CDROM!";  //error num -4
-	char err5[] = "ERROR: No device!";  //error num -5
 	char err0[] = "ERROR: Unknow error!";
 	char method1[] = "WARN: Press any key to continue ...";
 	char method2[] = "ERROR: Please reboot and setting BIOS ...";
-
+const char  devs[4][64]={
+"/dev/fs/ext2@usb0",
+"/dev/fs/fat@usb0",
+"/dev/fs/ext2@sata0",
+"/dev/fs/ext2@sata1",
+};
 	show_menu = 1;
 
 	if (path == NULL) {
@@ -188,65 +189,44 @@ static int load_menu_list()
 		}
 	}
 	memset(path, 0, 64);
-
-	p = getenv("bootdev");
-	rootdev = malloc(strlen(p));
+        rootdev=malloc(64);
+	p=getenv("bootdev");
+	if(p != NULL)  
 	strcpy(rootdev, p);
 
-	if(win_tp->win_mask == 0 || rootdev == NULL)
-	{
-		err = -5;
-	}
-	else if(strcmp(rootdev, win_tp->ide.w_para) == 0|| strcmp(rootdev, win_tp->sata0.w_para) == 0 || strcmp(rootdev, win_tp->sata1.w_para) == 0)
-	{
-		if(strstr(rootdev, "iso9660") != NULL)
-		{
-			err = -4;
-		}
-	}else{
-		err = -1;
-	}
-
-	if(err >= 0)
-	{
-		p =rootdev;
-		for(i=0;i<4;i++){
-			  p = strchr(p,'/');
-			  p++;
-		}
-printf("rootdev=%s,line=%d\r\n",rootdev,__LINE__);
-		rootdev[p-1-rootdev] = '\0';
-		sprintf(path, "%s/boot/boot.cfg", rootdev);
-		err = check_config(path);
-		if (err == 0 ) 
+	sprintf(path, "%s/boot/boot.cfg", rootdev);
+	if (file_exists(path)==0) {
 		sprintf(path, "%s/boot.cfg", rootdev);
-		err = check_config(path);
-		if (err == 1) {
-			sprintf(path, "bl -d ide ", path);
-			rootdev[p-1-rootdev] = '/';
+		if (file_exists(path)==0) {
+			for(i=0;i<4;i++) {
+				if(strcmp(devs[i],rootdev)==0) continue;
+				sprintf(path,"%s/boot.cfg",devs[i]);
+				if(file_exists(path)!=0) break;
+				sprintf(path,"%s/boot/boot.cfg",devs[i]);
+				if(file_exists(path)!=0) break;
+			}
+		}
+	}
+strcpy(rootdev,path);
+	err = check_config(rootdev);
+	if (err == 1) {
+			sprintf(path, "bl -d ide %s", rootdev);
 			vga_available = 1;
 			err = do_cmd(path);
 			if(err >= 0){
 				show_menu = 0;
-				                                      video_cls();
+				video_cls();
 				free(path);
 				free(rootdev);
 				path = NULL;
 
 				return err;
 			}
-		}
-		else
+		}else
 			err = -2;
-	}
 
 	switch(err)
 	{
-		case -1:
-			errp = err1;
-			methodp	= method2;
-			wait = 1;
-			break;
 		case -2:
 			errp = err2;
 			methodp = method1;
@@ -257,29 +237,15 @@ printf("rootdev=%s,line=%d\r\n",rootdev,__LINE__);
 			methodp = method1;
 			wait = 1;
 			break;
-		case -4:
-			errp = err4;
-			methodp = method1;
-			wait = 1;
-			break;
-		case -5:
-			errp = err5;
-			methodp = method1;
-			wait = 1;
-			break;
 		default:
 			errp = err0;
 	}
 	show_menu = 0;
-	//video_cls();
+	video_cls();
 	free(path);
 	free(rootdev);
 	path = NULL;
 
-	if(err == -4 || err == -5 )
-		return err;
-
-printf("err=%d,line=%d\r\n",err,__LINE__);
 	vga_prompt(errp, methodp , wait);
 
 	return err;
@@ -443,6 +409,43 @@ loop1:
 	return 0;
 }
 
+
+/*
+ * check file is exists. if exists return 1 ,
+*/
+
+uint8_t file_exists(char* path) {
+	uint8_t i,m,n=0,ret=0,have=0;
+	struct device *deva, *next_dev;
+	int	fp;
+	char dev[10];
+	memset(dev,0,10);
+	m=strlen(path);
+	for(i=4;i<m;i++){
+		if(path[i]=='@')break;
+	}
+
+	i++;  //找到设备名 &path[i]
+	for(;i<m;i++) {
+		if(path[i]=='/') 
+			break;
+		dev[n]=path[i];
+		n++;
+		if(n>9) break;
+	} //dev="usb0";
+	for (deva  = TAILQ_FIRST(&alldevs); deva != NULL; deva = TAILQ_NEXT(deva,dv_list)) {
+		if(strcmp(deva->dv_xname,dev)==0) {
+			have=1;  //看设备是不是在devls列表里
+			break;
+		}
+	}
+	if(have==0)
+		return ret;
+	fp = OpenLoadConfig(path);  
+if(fp>0) ret=1;
+close(fp);
+return ret;
+}
 /*
  *  Main interactive command loop
  *  -----------------------------
@@ -660,7 +663,6 @@ main()
 				{
 #ifdef ON_MENU_LIST
 					merr  = load_menu_list();
-				//	printf("err:%d\n",merr);
 #else
 				merr = 1;
 #endif
@@ -819,7 +821,7 @@ autoload(char *s)
 				else if (run_cnt == 2)
 					pa = getenv("append1");
 
-				//if((pa=getenv("append"))) {
+				if((pa=getenv("append"))) {
 				if (pa) {
 					sprintf(buf,"g %s",pa);
 				} else if((pa=getenv("karg"))) {
@@ -828,7 +830,7 @@ autoload(char *s)
 					pa=getenv("dev");
 					strcpy(buf,"g root=/dev/");
 					if(pa != NULL  && strlen(pa) != 0) strcat(buf,pa);
-					else strcat(buf,"hda1");
+					else strcat(buf,"sda1");
 					strcat(buf," console=tty");
 				}
 			}
