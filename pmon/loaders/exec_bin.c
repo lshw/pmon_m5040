@@ -55,7 +55,7 @@ static long
 {
 //	void *addr = (void *)dl_offset;
 	unsigned long long addr;
-	int size = 2048;
+	int size = 4096*16*16*16;
 	int n2;
 	int count = 0;
 
