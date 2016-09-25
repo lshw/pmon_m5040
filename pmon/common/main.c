@@ -218,7 +218,7 @@ strcpy(rootdev,path);
 				video_cls();
 				free(path);
 				free(rootdev);
-				path = NULL;
+				//path = NULL;
 
 				return err;
 			}
@@ -244,7 +244,7 @@ strcpy(rootdev,path);
 	video_cls();
 	free(path);
 	free(rootdev);
-	path = NULL;
+	//path = NULL;
 
 	vga_prompt(errp, methodp , wait);
 
@@ -501,7 +501,6 @@ main()
 			int t_cd = 0;
 			int t_disk = 0;
 
-
 #ifdef DEV2FTOPSTAR_YUN
 			yun_init = getenv ("yun_init");
 			if (!yun_init)
@@ -675,9 +674,9 @@ main()
 			//printf("afxIsReturnToPmon :%d\n",afxIsReturnToPmon);
 			if(merr == -2 || merr == -4 || merr == -3 || merr == 1)
 			{
-				char aut[] = " Autobooting..."; 
 
 #ifndef DEVBD2F_SM502
+				char aut[] = " Autobooting..."; 
 				if(afxIsReturnToPmon == 0)
 					vga_prompt(NULL, aut, 0);
 #endif
