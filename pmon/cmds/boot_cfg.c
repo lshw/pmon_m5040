@@ -30,6 +30,24 @@
  * SUCH DAMAGE.
  *
  */
+
+/**********************************************************************************
+
+ Copyright (C)
+ File name:     boot_cfg.c
+ Author:  ***      Version:  ***      Date: ***
+ Description:   
+ Others:       
+ Function List:
+ 
+ Revision History:
+ 
+ ----------------------------------------------------------------------------------
+  Date          Author          Activity ID     Activity Headline
+  2009-12-22    QianYuli        PMON00001222    Add recovery item,to control whether 
+                                                show title used for system recovery.
+***********************************************************************************/
+ 
 #ifndef __BOOT_CFG_C__
 #define __BOOT_CFG_C__
 #include <stdio.h>
@@ -71,9 +89,9 @@
 #endif
 
 #include "boot_cfg.h"
-#include "../../../../pmon/cmds/cmd_main/cmd_main.h"
-extern int afxIsReturnToPmon;
-extern win_dp win_tp;
+
+extern int boot_kernel(const char* path, int flags, void* flashaddr, unsigned int offset);
+extern int boot_initrd(const char* path, int flags);
 
 Menu_Item menu_items[MAXARGS];//Storage All menu information.
 int menus_num = 0;
@@ -85,6 +103,7 @@ MenuOptions menu_options[] = {
 	{"md5_enable", 0, 0, "0"},	/* 1-md5 */
 };
 
+unsigned int bootcfg_flags = 0;
 int options_num = sizeof(menu_options) / sizeof(menu_options[0]);
 
 /***************************************************
@@ -368,7 +387,7 @@ int menu_list_read(ExecId id, int fd, int flags)
 	char value[VALUE_LEN] = {0};
 	int in_menu = 0;
 	char title [MENU_TITLE_BUF_LEN + 1];//Title of menu item, display on screen.
-
+	
 	for (j = 0; j < MAXARGS; j++)
 	{
 		memset (menu_items + j, 0, sizeof(menu_items[j]));
@@ -377,7 +396,6 @@ int menu_list_read(ExecId id, int fd, int flags)
 	
 	j = -1; //set to 0;
 	n = 0;
-
 	while (ReadLine(id, fd, buf, buflen) > 0)//Read a line.
 	{
 		memset(title,0, MENU_TITLE_BUF_LEN + 1 );
@@ -387,7 +405,6 @@ int menu_list_read(ExecId id, int fd, int flags)
 		cp = trim(buf);//Trim space
 		if (*cp == '\0' || *cp == '#')//If only a empty line,or comment line, drop it.
 		{
-
 			continue;
 		}
 		
@@ -402,11 +419,13 @@ int menu_list_read(ExecId id, int fd, int flags)
 				menu_items[j].args = malloc (VALUE_LEN + 1);
 				menu_items[j].initrd = malloc (VALUE_LEN + 1);
 				menu_items[j].root = malloc (VALUE_LEN + 1);
+				menu_items[j].recovery= malloc (VALUE_LEN + 1);
 			}
 			memset (menu_items[j].kernel, 0, VALUE_LEN + 1);
 			memset (menu_items[j].args, 0, VALUE_LEN + 1);
 			memset (menu_items[j].initrd, 0, VALUE_LEN + 1);
 			memset (menu_items[j].root, 0, VALUE_LEN + 1);
+			memset (menu_items[j].recovery, 0, VALUE_LEN + 1);
 			in_menu = 1;
 			continue;
 		}
@@ -439,6 +458,21 @@ int menu_list_read(ExecId id, int fd, int flags)
 						strncpy(menu_items[j].root, value, VALUE_LEN);
 					}
 				}
+                else if (strcasecmp(option, "recovery") == 0)
+                {
+                    /*this is not recovery item,or recovery item not used*/
+                    if (((bootcfg_flags & U_KEY_PRESSED) != U_KEY_PRESSED)
+                        &&(value[0] == '0'))
+                    {
+                        free(menu_items[j].kernel);
+                        free(menu_items[j].args);
+                        free(menu_items[j].initrd);
+                        free(menu_items[j].root);
+                        free(menu_items[j].recovery);
+		                memset (menu_items + j, 0, sizeof(menu_items[j]));
+                        j--;
+                    }
+                }
 				//drop other property.
 			}
 		}
@@ -471,7 +505,6 @@ int OpenLoadConfig(const char* filename)
 	return bootfd;
 }
 
-int boot_kernel(const char* path, int flags, void* flashaddr, unsigned int offset);
 /**********************************************************
  * Execute menu item
  * int index , the index of menu_items[] to execute.
@@ -545,7 +578,6 @@ int load_kernel_from_menu(Menu_Item* pItem)
 	return 0;
 }
 
-int boot_initrd(const char* path, int rdstart,int flags);
 int load_initrd_from_menu(Menu_Item* pItem)
 {
 	char cmd[1025];
@@ -589,7 +621,7 @@ int load_initrd_from_menu(Menu_Item* pItem)
 		printf("%s\n",cmd);
 #endif
 //		stat=do_cmd(cmd);
-		stat = boot_initrd(cmd, 0x80800000,0);
+		stat = boot_initrd(cmd, 0);
 #ifdef MENU_DEBUG
 		printf("Load initrd return %d\n",stat);
 #endif
@@ -668,6 +700,8 @@ int boot_load_from_menu(Menu_Item* pItem)
 
 int boot_load(int index)
 {
+	//char cmd[1025];
+	//int is_root = 0;
 //#define MENU_DEBUG
 #ifdef MENU_DEBUG
 	int stat;
@@ -777,13 +811,50 @@ int load_list_menu(const char* path)
 	int flags = 0;
 	int bootfd;
 	ExecId id;
-	char *method;
 	int ret;
-
+	//int boot_id;
+	
+	char fat_path[100];
+	char fat_device_path[10];
+	char *pDeviceStart = NULL;
+	char *pDeviceEnd = NULL;
+	unsigned int DevNameLength;
+	
+	//ext2 file system default
 	bootfd = OpenLoadConfig(path);
+	//printf("load_list_menu bootfd %d\n",bootfd);
 	if (bootfd == -1)
 	{
-		return -1;
+		//Second chance to try FAT32 file system
+		//do the path tranform,for example
+		//(usb0,0)/boot.cfg -> /dev/fat/disk@usb0/boot.cfg
+		//(usb0,1)/boot.cfg -> /dev/fat/disk@usb0b/boot.cfg
+		//(usb0,2)/boot.cfg -> /dev/fat/disk@usb0c/boot.cfg
+		//(wd0,0)/boot.cfg -> /dev/fat/disk@wd0/boot.cfg
+		//(wd0,1)/boot.cfg -> /dev/fat/disk@wd0b/boot.cfg
+		//(wd0,2)/boot.cfg -> /dev/fat/disk@wd0c/boot.cfg
+				
+		pDeviceStart = strchr(path,'(');
+		if (pDeviceStart==NULL)
+			return -1;
+		pDeviceEnd = strchr(path,',');
+		if (pDeviceEnd==NULL)
+			return -1;
+		DevNameLength = (unsigned int)pDeviceEnd -(unsigned int)pDeviceStart -1;
+		memset(fat_device_path, 0, 10);
+		memcpy(fat_device_path, path+1, DevNameLength);
+		fat_device_path[DevNameLength] =*(++pDeviceEnd)+0x31;
+		fat_device_path[DevNameLength+1] = '\0';
+		pDeviceStart = strchr(path,'/');
+		if (pDeviceStart==NULL)
+			return -1;		
+		pDeviceStart++;
+		memset(fat_path, 0, 100);
+		sprintf(fat_path, "/dev/fat/disk@%s/%s",fat_device_path,pDeviceStart);
+		bootfd = OpenLoadConfig(fat_path);
+		//printf("load_list_menu second bootfd %d\n",bootfd);
+		if (bootfd == -1)
+			return -1;
 	}
 
 	id = getExec("txt");
@@ -791,10 +862,9 @@ int load_list_menu(const char* path)
 		ret = menu_list_read(id, bootfd, flags);
 		if (ret != 0)
 		{
-
-		//	printf("\nCannot found and boot item in boot configure file.");
-		//	printf("\nPress any key to continue ...\n");
-		//	getchar();
+			//printf("\nCannot found and boot item in boot configure file.");
+			//printf("\nPress any key to continue ...\n");
+			getchar();
 			close(bootfd);
 			return -2;
 		}
@@ -811,6 +881,7 @@ int load_list_menu(const char* path)
 int do_cmd_boot_load(int boot_id, int device_flag)
 {
 	int ret = -1;
+	//struct termio sav;
 #if 0
 	if (boot_id == -1 && check_cdrom() && device_flag == IDE)
     {
@@ -831,12 +902,13 @@ int do_cmd_boot_load(int boot_id, int device_flag)
 
 		if (boot_id < menus_num)
 		{
-			if(strcmp(menu_items[boot_id].kernel, win_tp->sata0.w_para) == 0 || strcmp(menu_items[boot_id].kernel, win_tp->sata1.w_para) == 0 || strcmp(menu_items[boot_id].kernel, win_tp->ide.w_para) == 0)
+			vga_available = 0;
 			ret = boot_load(boot_id);
 			if (ret <0 )
 			{
-				printf("Configuration failed.\nPress any key to continue ...%d\n", ret);
-				getchar();
+				vga_available = 1;
+				//printf("The kernel entry is wrong!\nPlease check the kernel entry in boot.cfg file!\n");
+				//getchar();
 			}
 			return ret;
 		}
