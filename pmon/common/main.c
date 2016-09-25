@@ -821,7 +821,6 @@ autoload(char *s)
 				else if (run_cnt == 2)
 					pa = getenv("append1");
 
-				if((pa=getenv("append"))) {
 				if (pa) {
 					sprintf(buf,"g %s",pa);
 				} else if((pa=getenv("karg"))) {
