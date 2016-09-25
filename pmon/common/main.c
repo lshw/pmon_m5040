@@ -214,19 +214,21 @@ static int load_menu_list()
 			  p = strchr(p,'/');
 			  p++;
 		}
+printf("rootdev=%s,line=%d\r\n",rootdev,__LINE__);
 		rootdev[p-1-rootdev] = '\0';
 		sprintf(path, "%s/boot/boot.cfg", rootdev);
-
+		err = check_config(path);
+		if (err == 0 ) 
+		sprintf(path, "%s/boot.cfg", rootdev);
 		err = check_config(path);
 		if (err == 1) {
-			sprintf(path, "bl -d ide %s/boot/boot.cfg", rootdev);
+			sprintf(path, "bl -d ide ", path);
 			rootdev[p-1-rootdev] = '/';
 			vga_available = 1;
 			err = do_cmd(path);
-
 			if(err >= 0){
 				show_menu = 0;
-				//                                      video_cls();
+				                                      video_cls();
 				free(path);
 				free(rootdev);
 				path = NULL;
@@ -277,51 +279,11 @@ static int load_menu_list()
 	if(err == -4 || err == -5 )
 		return err;
 
+printf("err=%d,line=%d\r\n",err,__LINE__);
 	vga_prompt(errp, methodp , wait);
 
 	return err;
 
-#if 0
-		else {
-			sprintf(path, "/dev/fs/ext2@wd0/boot/boot.cfg", rootdev);
-			if (check_config(path) == 1) {
-				sprintf(path, "bl -d ide /dev/fs/ext2@wd0/boot/boot.cfg", rootdev);
-				vga_available = 1;
-				if (do_cmd(path) == 0) {
-					show_menu = 0;
-					//                                              video_cls();
-					free(path);
-					path = NULL;
-					return 1;
-				}
-			}
-		}
-#endif
-
-/* 2st bootdev */
-/*		memset(path, 0, 64);
-
-		if (rootdev1 != NULL)
-			sprintf(path, "/dev/fs/ext2@sata1/boot/boot.cfg", rootdev1);
-		if (rootdev1 != NULL && check_config(path) == 1) {
-			sprintf(path, "bl -d ide dev/fs/ext2@sata1/boot/boot.cfg", rootdev1);
-			vga_available = 1;
-			if (do_cmd(path) == 0) {
-				show_menu = 0;
-				//                                      video_cls();
-				free(path);
-			}
-		}
-*/
-#if 0
-	free(path);
-	path = NULL;
-	//                      video_cls();
-	show_menu=0;
-	return 0;
-	show_menu=0;
-	return 1;
-#endif
 }
 
 int pwd_exist(void);
