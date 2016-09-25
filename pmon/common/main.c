@@ -156,6 +156,91 @@ int vga_prompt(char *err, char *method, int iswait)
 }
 int check_config (const char * file);
 
+/* 自动执行
+*/
+
+int autoexec(char* dev) {
+	FILE	   *fp;
+	char *cmd,*buf,*ver,*old_ver, devb[20];
+	int ret=1,i,m,have=0;
+	int filelen,cmdlen;
+	struct device *deva, *next_dev;
+	m=strlen(dev);
+	for(i=4;i<m;i++){
+		if(dev[i]=='@')break;
+	}
+	i++;  //找到设备名 &dev[i]
+	if(strncmp(dev,"/dev/",5)==0) {
+		for (deva  = TAILQ_FIRST(&alldevs); deva != NULL; deva = TAILQ_NEXT(deva,dv_list)) {
+			if(strcmp(deva->dv_xname,&dev[i])==0) {
+				have=1;
+				break;
+			}
+		}
+		if(have==0)
+			return ret;
+	}
+
+	printf("%s ",dev);
+	buf=malloc(32768);
+	cmd=malloc(1024);
+	ver=malloc(128);
+	old_ver=malloc(128);
+	sprintf(buf,"%s/autoexec.m5040",dev);
+	if(fp=fopen(buf,"r")){
+		printf("\nrun autoexec.m5040 from %s\n",dev);
+		fgets(buf,300,fp);
+		for(i=0;i<20;i++) { //第一行是版本号，
+			if(buf[i]==13) break; 
+			if(buf[i]==10) break; 
+			if(buf[i]==' ') break; //空格截断
+			if(buf[i]=="\t") break; 
+			ver[i]=buf[i];
+			ver[i+1]=0;
+		}
+		old_ver=getenv("autoexecVer");
+		if(!old_ver)  //getenv函数有个问题， 会返回0值，造成strcmp崩溃，所以先要判断下
+			old_ver="";
+		printf("old_ver=%s,new_ver=%s\n",old_ver,ver);
+		if( ver && strcmp(ver,old_ver) != 0) { 
+			setenv("autoexecDev",dev); //可以在autoexec.m5040中用${autoexecDev}调用
+			filelen=fread (buf, 1, 32768, fp); //一次读入
+			fclose(fp);
+			cmdlen=0;
+			memset(cmd,0,1024);
+			if(filelen>0) 
+				for(i=0;i<filelen;i++) {
+					switch(buf[i]) {
+						case 0:
+						case 13:
+						case 10:
+						case '#':
+							if(cmdlen>0 && cmd[0]!='#' && strncmp(cmd,"[end]",5)!=0) //不是"[end]"
+								do_cmd(cmd);
+							memset(cmd,0,1024);
+							cmdlen=0;
+							break;
+						default:
+							cmd[cmdlen]=buf[i];
+							cmdlen++;
+							break;
+					}
+				}
+		}
+		ret=0; //返回完成， 就不会再查其他的位置的autoexec.m5040
+		if(ver[0]!='#') {  //第一行的第一个字母是#,则不会更新环境变量autoexecVer, 就可以每次都自动执行。
+			setenv("autoexecVer",ver);
+			if(strcmp(ver,old_ver)!=0)
+				do_cmd("reboot"); //版本有变化才reboot
+		}
+	}
+	free(ver);
+	free(buf);
+	free(cmd);
+	free(old_ver);
+	return ret;
+}
+
 /*************** return  error num *********************/
 /*   -1,-2,-3,-4,-5: fail to loading boot.cfg          */
 /*   1: fail to loading kernel according to  boot.cfg  */
@@ -490,6 +575,26 @@ main()
 	{
 		static int run=0;
 		char *s = 0, *s1 = 0, *yun_init = 0;
+
+
+		/* autoexec */
+#ifdef RAM //RAM版本的pmon
+		printf("run at ram\r\n");
+		if(autoexec("/dev/fat@usb0") == 1
+				&& autoexec("/dev/ext2@usb0") == 1)
+			autoexec("tftp://192.168.1.1");
+#else //ROM版本的PMON
+			s=getenv("autoexec");
+		if(s && strcmp(s,"yes") == 0)
+		{
+			if(autoexec("/dev/fat@usb0") == 1
+					&& autoexec("/dev/ext2@usb0") == 1
+					&& autoexec("/dev/ext2@sata0") == 1)
+				autoexec("/dev/ext2@sata1");
+		}
+
+#endif
+
 		if(!run)
 		{
 			run=1;
