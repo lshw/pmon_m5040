@@ -11,8 +11,8 @@ make pmontools
 make config
 make buildram
 cp zloader/gzram .
-#scp gzram 192.168.12.7:/srv/tftp
-make build
-cp zloader/gzrom.bin .
+scp gzram 192.168.12.7:/srv/tftp
+#make build
+#cp zloader/gzrom.bin .
 #scp gzrom.bin 192.168.12.7:/srv/tftp
 
