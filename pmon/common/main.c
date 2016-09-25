@@ -806,13 +806,12 @@ autoload(char *s)
 			rd= getenv("rd");
 			if (rd != 0){
 				sprintf(buf, "initrd %s", rd);
-				if(do_cmd(buf))return;
+				do_cmd(buf);
 			}
 
 			strcpy(buf,"load ");
 			strcat(buf,s);
-			if(do_cmd(buf))
-				return;
+			do_cmd(buf);
 
 			{
 				if (run_cnt == 1)
