@@ -414,12 +414,13 @@ loop1:
  * check file is exists. if exists return 1 ,
 */
 
-uint8_t file_exists(char* path) {
+int8_t file_exists(char* path) {
 	uint8_t i,m,n=0,ret=0,have=0;
-	struct device *deva, *next_dev;
+	struct device *deva;
 	int	fp;
-	char dev[10];
-	memset(dev,0,10);
+	char dev[100];
+if(path[0]=='t' && path[1]== 'f' && path[2]=='t' && path[3]=='p')  return 1;
+	memset(dev,0,100);
 	m=strlen(path);
 	for(i=4;i<m;i++){
 		if(path[i]=='@')break;
