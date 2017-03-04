@@ -218,7 +218,7 @@ strcpy(rootdev,path);
 				video_cls();
 				free(path);
 				free(rootdev);
-				//path = NULL;
+				path = NULL;
 
 				return err;
 			}
@@ -244,7 +244,7 @@ strcpy(rootdev,path);
 	video_cls();
 	free(path);
 	free(rootdev);
-	//path = NULL;
+	path = NULL;
 
 	vga_prompt(errp, methodp , wait);
 
