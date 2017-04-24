@@ -92,8 +92,10 @@ int topstar_nand_init(void)
 		return -ENXIO;
 	}
 
-	add_mtd_device(fcr_soc_mtd,0,0x20000000,"mtd0");
-	find_good_part(fcr_soc_mtd);
+
+	add_mtd_device(fcr_soc_mtd, 0, 14*1024*1024, "kernel");
+	add_mtd_device(fcr_soc_mtd, 14*1024*1024, fcr_soc_mtd->size - 14*1024*1024, "rootfs");
+	//find_good_part(fcr_soc_mtd);
 
 	/* Return happy */
 
