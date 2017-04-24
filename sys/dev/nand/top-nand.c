@@ -93,8 +93,9 @@ int topstar_nand_init(void)
 	}
 
 
-	add_mtd_device(fcr_soc_mtd, 0, 14*1024*1024, "kernel");
-	add_mtd_device(fcr_soc_mtd, 14*1024*1024, fcr_soc_mtd->size - 14*1024*1024, "rootfs");
+	add_mtd_device(fcr_soc_mtd, 0, 32*1024*1024, "kernel");
+	add_mtd_device(fcr_soc_mtd, 32*1024*1024, 32*1024*1024, "ramdisk");
+	add_mtd_device(fcr_soc_mtd, 64*1024*1024, 420 *1024*1024, "test");
 	//find_good_part(fcr_soc_mtd);
 
 	/* Return happy */
