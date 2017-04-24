@@ -27,8 +27,8 @@ option		INET
 option		DEV2FTOPSTAR
 option		DEV2FTOPSTAR_YUN
 
-#select		mod_flash_amd		# AMD flash device programming
-#select		mod_flash_intel		# intel flash device programming
+select		mod_flash_amd		# AMD flash device programming
+select		mod_flash_intel		# intel flash device programming
 select		mod_flash_sst		# sst flash device programming
 select		mod_flash_winbond       # winbond flash device programming
 select		mod_debugger		# Debugging module
